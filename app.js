@@ -199,11 +199,11 @@ angular.module('BuildingLabExport', ['tmCloudClient', 'angular-loading-bar'], fu
                to: $scope.convergeLocaltime($scope.date.to, -1 * $scope.date.timezone),
             };
 
-            var buf = "";
+            var buf = "datetime;id;devicetype;co2;temp;light;moist;movement;noise\r\n";
 
             _.each(val.result, function(item) {
                var res = parse(item);
-               if (res.date > date.from && res.date < date.to) {
+               if (res.date > date.from && res.date < date.to && item['proto/tm']['detail'] === 'zacima') {
                    buf += [
                       $scope.convergeLocaltime(res.date, -1 * $scope.date.timezone).toISOString().replace(/\..*$/, ''),
                       item.selector.join('/'),
