@@ -1,0 +1,205 @@
+<!doctype html>
+<html ng-app="BuildingLabExport">
+    <head>
+        <meta charset="utf-8" />
+        <title>Export</title>
+        <link href="css/style.css" rel="stylesheet">
+
+        <style type="text/css">
+            body {
+                padding-top:100px;
+                background: #efefef; }
+
+            a { cursor: pointer; }
+
+            .list-group-item.active a { color: #fff; }
+
+            .box {
+                margin: 0;
+                border-radius: 6px;
+                background: #fff;
+                border: 1px solid #ddd;
+                padding: 0 2em 3em;
+                box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.1); }
+
+            .flash-container {
+                margin: 0 auto; }
+
+            #selectors {
+                position: absolute;
+                top: 40px;
+                right: 28px; }
+            .net-selector > button { min-width: 10em; }
+
+            .dropdown-toggle, .menuitem {
+                position: relative;
+                float: left;
+                margin-left: 1em; }
+                .dropdown-toggle:hover .dropdown-menu {
+                    display: block; }
+                .dropdown-menu {
+                   margin: 1px 0px 0px 0px; }
+                .dropdown-menu a {
+                    cursor: pointer; }
+                .dropdown-menu span {
+                    display: block;
+                    padding: 3px 20px;
+                    clear: both;
+                    font-weight: normal;
+                    line-height: 1.428571429;
+                    color: #333;
+                    white-space: nowrap; }
+                .dropdown-menu .active a {
+                    color: #FFF;
+                    text-decoration: none;
+                    background-color: #428BCA; }
+        </style>
+    </head>
+
+    <body ng-controller="AuthController" ng-cloak>
+        <div class="container" ng-controller="LoginController">
+            <modal title="Please sign in" visible="!$auth.authenticated">
+            <form name="loginForm"
+                  ng-submit="login(auth)">
+                <div ng-show="flash" class="flash-container">
+                    <div class="alert alert-{{flashClass || 'info'}}">
+                        {{flash}}
+                    </div>
+                </div>
+                <div class="form-group" ng-class="{'has-error': loginForm.email.$invalid}">
+                    <input name="email" ng-model="auth.email"
+                                        type="email" class="form-control"
+                                                     placeholder="Email address"
+                                                     required autofocus>
+                </div>
+
+                <div class="form-group"  ng-class="{'has-error': loginForm.password.$invalid}">
+                    <input name="password" ng-model="auth.password"
+                                           type="password" class="form-control"
+                                                           placeholder="Password"
+                                                           ng-minlength="8"
+                                                           required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" ng-disabled="loginForm.$invalid">Sign in</button>
+            </form>
+            </modal>
+        </div>
+
+        <div class="container" ng-controller="AppController">
+            <div class="box col-md-10 col-md-push-1">
+                <div class="page-header">
+                    <h2 class="form-signin-heading">Export <span ng-show="net.key"> - {{net.name}}</span></h2>
+                </div>
+                <div id="selectors" class="row">
+                    <div class="menuitem">
+                        <button ng-show="collapseNets" class="btn btn-primary" ng-click="collapseNets = false">Show networks <span class="caret"></span></button>
+                        <button ng-show="!collapseNets" class="btn btn-primary" ng-click="collapseNets = true">Hide networks <span class="caret"></span></button>
+                        <button ng-click="logout()" type="button" class="btn btn-default">
+                            Logout <i>({{user.email}})</i>
+                        </button>
+                    </div>
+                </div>
+
+                <div ng-show="0 === user.networks.length">
+                    <div class="alert alert-info">
+                        <h4>Ouch, I'm empty!</h4>
+                        <p>
+                        This <i>organizations context</i> does not contain
+                        any networks. This is surely a mistake, either you should
+                        add a network or switch to a different <i>organizations context</i>
+                        </p>
+                    </div>
+                </div>
+                <div ng-show="user.networks.length && !collapseNets">
+                    <ul class="list-group">
+                        <li class="list-group-item"
+                            ng-class="{'active': k === net.key}"
+                            ng-repeat="k in user.networks"
+                            ng-click="setNet(k)">
+                            <a>{{k}}<span ng-if="k === net.key"> - {{net.name}}</span></a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div ng-show="!net" class="alert alert-info">
+                    <p>
+                    To get started you need to select a network from the list above
+                    </p>
+                </div>
+
+                <div class="">
+                    <div class="frame">
+                        <div class="title">
+                            <h4>Query Range</h4>
+                        </div>
+
+                        <div class="row">
+                            <div class="input-daterange input-group">
+                                <span class="input-group-addon">From</span>
+                                <input formatdt="date.timezone" ng-model="date.from" type="datetime-local" name="date.from" class="form-control" id="dateFrom" placeholder="Date From">
+                                <span class="input-group-addon">To</span>
+                                <input formatdt="{{date.timezone}}" ng-model="date.to" type="datetime-local" name="date.to" class="form-control" id="dateTo" placeholder="Date To">
+                                <span class="input-group-addon">Timezone</span>
+                                <input formattz data-ng-model="date.timezone" type="text" name="date.timezone" class="form-control" id="dateTimezone" placeholder="TZ">
+                            </div>
+                            <hr />
+                            <div>
+                                <div class="col-xs-9">
+																		<div class="alert alert-warning text-left">
+																			On the server all dates are stored with UTC timezone.
+																			This means that we need to do some special handling
+																			here to display/export dates according to local time.<br />
+																			<strong>If your query range expands DST, set timezone to +00:00 and handle this yourself!</strong>
+																		</div>
+                                    <div ng-if="_.size(qErr) > 0" class="alert alert-danger">
+                                        <span ng-repeat="(k, err) in qErr">
+                                            <b>{{k}}:</b> {{err}}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-xs-3 text-right">
+                                    <span ng-show="exporting">Loading ....</span>
+                                    <button ng-disabled="exporting" class="btn btn-primary" ng-click="export(net.key, date, devices)">Export (.csv)<span class="glyphicon glyphicon-download-alt"></span></button>
+                                </div>
+                            </div>
+                        </div>
+                        <hr />
+                        <div>
+                            <div class="title">
+                                <h4>Select Devices</h4>
+                            </div>
+                            <div class="container">
+                                <div class="col-xs-3">
+                                    <div class="title">
+                                        <h5>Groups</h5>
+                                    </div>
+
+                                    <div>
+                                        <label><input ng-change="setType('_')" ng-model="select._" type="checkbox" /> All devices</label>
+                                    </div>
+                                    <div ng-repeat="(k,v) in net.types">
+                                        <label><input ng-change="setType(k)" ng-model="select[k]" type="checkbox" /> type: {{k}}</label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-9 col-push-xs-3">
+                                    <div class="title">
+                                        <h5>Device list</h5>
+                                    </div>
+                                    <div ng-repeat="(k,v) in net.devicemap" class="col-xs-3">
+                                        <label><input ng-change="setDevice(k)" ng-model="devices[k]" type="checkbox" /> {{v.name || k}} ({{v.type}})</label>
+                                    </div>
+                                </div>
+                            </div>
+													<pre>{{res}}</pre>
+                        </div>
+                    </div>
+
+                </div>
+
+                <script src="vendor.js"></script>
+                <script src="tm.cloud.client.js"></script>
+                <script src="app.js"></script>
+    </body>
+</html>
+
